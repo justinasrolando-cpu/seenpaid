@@ -1,5 +1,5 @@
 # One-command self-host: `docker compose up`, then run the migration once
-# (see SELF_HOST.md) and you have a scheduler + worker + Postgres + Redis +
+# (see SELF_HOST.md) and you have the API + worker + Postgres + Redis +
 # local object storage (MinIO, an S3-compatible store) running together.
 #
 # Swap the `minio` service for Cloudflare R2 (or any other S3-compatible
@@ -11,15 +11,15 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: scheduler
-      POSTGRES_PASSWORD: scheduler
+      POSTGRES_USER: seenpaid
+      POSTGRES_PASSWORD: seenpaid
       POSTGRES_DB: seenpaid
     volumes:
       - postgres-data:/var/lib/postgresql/data
     ports:
       - '5432:5432'
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U scheduler']
+      test: ['CMD-SHELL', 'pg_isready -U seenpaid']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -82,7 +82,7 @@ services:
         condition: service_healthy
     env_file: .env
     environment:
-      DATABASE_URL: postgres://scheduler:scheduler@postgres:5432/seenpaid
+      DATABASE_URL: postgres://seenpaid:seenpaid@postgres:5432/seenpaid
       REDIS_HOST: redis
       REDIS_PORT: '6379'
       S3_ENDPOINT: http://minio:9000
@@ -109,7 +109,7 @@ services:
   #       condition: service_healthy
   #   env_file: .env
   #   environment:
-  #     DATABASE_URL: postgres://scheduler:scheduler@postgres:5432/seenpaid
+  #     DATABASE_URL: postgres://seenpaid:seenpaid@postgres:5432/seenpaid
   #     REDIS_HOST: redis
   #     REDIS_PORT: '6379'
 

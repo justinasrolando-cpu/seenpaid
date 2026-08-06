@@ -3,8 +3,8 @@
 This folder holds nothing but client-side configuration for connecting an
 MCP-capable AI agent (Claude, or any other MCP client) to a running
 seenpaid instance. It's licensed separately, under MIT (see
-`LICENSE` in this folder) rather than the AGPL-3.0 that covers the scheduler
-core — a tiny config snippet is exactly the kind of thing that should be
+`LICENSE` in this folder) rather than the AGPL-3.0 that covers the main
+repo — a tiny config snippet is exactly the kind of thing that should be
 freely copyable into agent-directory listings and other MCP client configs
 without license friction. The server it points at is still AGPL-3.0.
 

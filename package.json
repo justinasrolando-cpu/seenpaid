@@ -1,7 +1,7 @@
 {
   "name": "seenpaid",
   "version": "0.1.0",
-  "description": "Self-hosted, agent-friendly social media scheduler. 25 platform adapters, a BullMQ publish pipeline, and a 3-tool MCP server so an AI agent can schedule posts on your behalf.",
+  "description": "Self-hosted, agent-native social posting layer. 25 platform adapters, a BullMQ publish pipeline, and a 3-tool MCP server so an AI agent can post on your behalf.",
   "license": "AGPL-3.0-only",
   "private": true,
   "type": "module",

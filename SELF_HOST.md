@@ -1,6 +1,6 @@
 # Self-hosting guide
 
-Step-by-step: get the scheduler running, connect a platform, schedule a
+Step-by-step: get seenpaid running, connect a platform, schedule a
 post, and connect an AI agent over MCP.
 
 ## 1. Prerequisites

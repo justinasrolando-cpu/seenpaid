@@ -7,7 +7,7 @@
 That question is answered by [seenpaid.com](https://seenpaid.com) — the
 hosted cloud product, which matches your Stripe sales back to the exact post
 that drove them. This repository is **not** that. This repository is the
-open posting layer underneath it: a self-hosted scheduler that connects to
+open posting layer underneath it: a self-hosted service that connects to
 25 social and publishing platforms, queues and retries deliveries, and
 exposes itself to an AI agent over MCP (Model Context Protocol) so an agent
 can schedule posts on your behalf. Point an agent at your own instance, or
@@ -139,7 +139,7 @@ see `CONTRIBUTING.md` for how to propose it.
 
 ## License
 
-The scheduler core (everything except `mcp-connector/`) is licensed
+The core (everything except `mcp-connector/`) is licensed
 **AGPL-3.0** — see `LICENSE`. The short version: you can self-host, modify,
 and redistribute freely, but if you run a modified version as a network
 service for others, you must offer them the modified source too. This
