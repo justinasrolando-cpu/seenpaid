@@ -20,8 +20,8 @@ shape, different depth.
   every connected platform as an independent, retried job.
 - 25 platform adapters behind one interface — OAuth, webhook, API-key, and
   paste-your-own-credentials flows, whichever each platform actually uses.
-- A REST API and a 3-tool MCP server, so both a script and an AI agent can
-  drive it the same way.
+- A REST API and a 13-tool MCP server — scheduling, editing, media, and
+  account health — so both a script and an AI agent can drive it the same way.
 - Single-operator by design: one API key, no login screen, no multi-tenant
   concept. Deploy it, set a key, use it.
 
@@ -114,11 +114,11 @@ src/
   domain/features/
     posts/          Create/list/cancel a post; fans out to per-platform jobs
     accounts/        Connect/list/disconnect a platform account
-    media/           Presigned upload + optional free AI image generation
+    media/           Presigned upload, URL ingestion, optional free AI image generation
   jobs/              BullMQ queue + worker: the actual publish pipeline
   entry-points/
     api/             REST API (Express)
-    mcp/             The 3-tool MCP server
+    mcp/             The 13-tool MCP server
   auth/              Single-operator API-key auth (see below)
   data-access/       Drizzle ORM schema, repositories, migrations
 ```

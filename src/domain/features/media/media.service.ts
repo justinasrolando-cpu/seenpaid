@@ -10,6 +10,32 @@ const mediaRepo = new MediaRepository()
 // by default. Fully optional; posts work fine without ever calling this.
 const AI_IMAGE_SIZE = 1024
 
+const ALL_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/quicktime']
+const MAX_INGEST_BYTES = 100 * 1024 * 1024 // 100MB — below the 500MB upload cap
+
+// Blocks the obvious SSRF targets: loopback, link-local (incl. the cloud
+// metadata endpoint at 169.254.169.254), and RFC1918 space. Hostname-based, so
+// it does not stop a public DNS name that resolves to a private IP — a full fix
+// needs resolve-then-check-then-pin. Worth doing if this ever accepts untrusted
+// input beyond an authenticated org's own agent.
+function isPrivateHost(hostname: string): boolean {
+  const h = hostname.toLowerCase().replace(/^\[|\]$/g, '')
+  if (h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.internal') || h.endsWith('.local')) return true
+  if (h === '::1' || h.startsWith('fc') || h.startsWith('fd') || h.startsWith('fe80:')) return true
+
+  const v4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
+  if (!v4) return false
+  const [a, b] = [Number(v4[1]), Number(v4[2])]
+  return (
+    a === 0 || a === 127 ||                    // this-host, loopback
+    a === 10 ||                                // 10.0.0.0/8
+    (a === 172 && b >= 16 && b <= 31) ||       // 172.16.0.0/12
+    (a === 192 && b === 168) ||                // 192.168.0.0/16
+    (a === 169 && b === 254) ||                // link-local + cloud metadata
+    (a === 100 && b >= 64 && b <= 127)         // carrier-grade NAT
+  )
+}
+
 export class MediaService {
   // Step 1 of 2: client asks for a place to upload; we hand back a
   // presigned PUT URL scoped to this org's key prefix.
@@ -42,6 +68,56 @@ export class MediaService {
       durationSeconds: dto.durationSeconds,
       width: dto.width,
       height: dto.height,
+    })
+  }
+
+  // Ingest a publicly-reachable image or video into this org's library.
+  //
+  // Not the same as `register`, which only records a row for bytes already
+  // PUT to a presigned key. An agent has no browser to upload from, so this
+  // is the only way it can attach an image it didn't generate itself. The
+  // bytes are copied in rather than the URL stored as-is: a remote URL can
+  // rot, and several platform APIs refuse to fetch media from arbitrary
+  // hosts at publish time.
+  async ingestFromUrl(orgId: string, sourceUrl: string): Promise<Media> {
+    let parsed: URL
+    try { parsed = new URL(sourceUrl) } catch { throw new ApiError(400, 'That is not a valid URL') }
+    // Only http(s), and never a URL the server itself can reach internally —
+    // this fetches on the caller's behalf, so without this it's an SSRF hole
+    // straight into the private network and cloud metadata service.
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new ApiError(400, 'Only http and https URLs can be ingested')
+    }
+    if (isPrivateHost(parsed.hostname)) {
+      throw new ApiError(400, 'That host is not reachable from here')
+    }
+
+    let res: Response
+    try {
+      res = await fetch(parsed.toString(), { signal: AbortSignal.timeout(60_000), redirect: 'follow' })
+    } catch {
+      throw new ApiError(504, 'Could not download that URL — it timed out or is unreachable')
+    }
+    if (!res.ok) throw new ApiError(400, `Could not download that URL (HTTP ${res.status})`)
+
+    const mimeType = (res.headers.get('content-type') ?? '').split(';')[0]!.trim().toLowerCase()
+    if (!ALL_ALLOWED_TYPES.includes(mimeType)) {
+      throw new ApiError(400, `Unsupported media type "${mimeType || 'unknown'}". Allowed: ${ALL_ALLOWED_TYPES.join(', ')}.`)
+    }
+
+    const buf = Buffer.from(await res.arrayBuffer())
+    if (buf.byteLength === 0) throw new ApiError(400, 'That URL returned an empty file')
+    if (buf.byteLength > MAX_INGEST_BYTES) {
+      throw new ApiError(400, `That file is ${Math.round(buf.byteLength / 1024 / 1024)}MB — the limit is ${MAX_INGEST_BYTES / 1024 / 1024}MB`)
+    }
+
+    const type = mediaTypeFromMime(mimeType)
+    const ext = mimeType.split('/')[1] ?? 'bin'
+    const r2Key = buildMediaKey(orgId, `ingested.${ext}`)
+    await uploadBytes(r2Key, mimeType, buf)
+
+    return mediaRepo.create({
+      orgId, type, r2Key, url: getPublicUrl(r2Key), mimeType, sizeBytes: buf.byteLength,
     })
   }
 
