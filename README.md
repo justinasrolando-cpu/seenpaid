@@ -7,8 +7,8 @@
 That question is answered by [seenpaid.com](https://seenpaid.com) — the
 hosted cloud product, which matches your Stripe sales back to the exact post
 that drove them. This repository is **not** that. This repository is the
-open posting layer underneath it: a self-hosted service that connects to
-25 social and publishing platforms, queues and retries deliveries, and
+open posting layer underneath it: a self-hosted service that ships 25
+platform adapters, queues and retries deliveries, and
 exposes itself to an AI agent over MCP (Model Context Protocol) so an agent
 can schedule posts on your behalf. Point an agent at your own instance, or
 point it at seenpaid.com if you also want the revenue answer — same MCP
@@ -20,7 +20,11 @@ shape, different depth.
   every connected platform as an independent, retried job.
 - 25 platform adapters behind one interface — OAuth, webhook, API-key, and
   paste-your-own-credentials flows, whichever each platform actually uses.
-- A REST API and a 13-tool MCP server — scheduling, editing, media, and
+  (The hosted product, seenpaid.com, advertises 21: the ones a customer can
+  connect there without registering their own developer app. Self-hosting you
+  bring your own credentials, so you get all 25. Two different numbers, both
+  honest — don't quote one as the other.)
+- A REST API and a 16-tool MCP server — scheduling, editing, media, and
   account health — so both a script and an AI agent can drive it the same way.
 - Single-operator by design: one API key, no login screen, no multi-tenant
   concept. Deploy it, set a key, use it.
@@ -54,20 +58,33 @@ docker compose exec api npm run db:migrate
 The API is now listening on `http://localhost:3001`. Full walkthrough,
 including connecting a platform and your agent, in `SELF_HOST.md`.
 
-## The 3 MCP tools
+## The 16 MCP tools
 
 Point an MCP-capable agent at `POST /mcp` (Bearer `API_KEY`) and it gets:
 
 | Tool | What it does |
 |---|---|
-| `list_accounts` | Lists connected platform accounts — id, platform, handle, status |
-| `list_posts` | Lists recent posts with status, schedule time, and target platforms |
-| `schedule_post` | Schedules or immediately publishes a post to one, several, or all connected accounts |
+| `list_accounts` | Connected accounts — platform, handle, id, status |
+| `list_posts` | Posts with status, schedule time, targets and publish errors |
+| `get_post` | One post in full |
+| `schedule_post` | Schedule or publish now, to one platform, several, or all |
+| `bulk_schedule` | A week of posts in one call; one failure doesn't stop the rest |
+| `update_post` | Edit a draft or scheduled post's caption or time |
+| `cancel_post` | Cancel before it goes out; already-published targets untouched |
+| `delete_post` | Permanent delete — prefer `cancel_post` |
+| `list_media` | The media library, newest first |
+| `add_media_from_url` | Pull an image or video in from a public URL |
+| `generate_image` | Text prompt to image, keyless, stored in the library |
+| `get_account_health` | Which accounts still work — check before a big batch |
+| `get_connect_url` | The link a human opens to connect an account (OAuth needs a human) |
+| `disconnect_account` | Disconnect an account |
+| `get_platform_requirements` | Caption limits, whether media is mandatory, per-platform catches |
+| `validate_post` | Dry-run a caption against platforms without publishing |
 
-That's the whole surface. There's no `get_analytics` or `get_top_posts`
-here — those exist only on the hosted seenpaid.com MCP server, because
-answering them requires the closed-source attribution engine this repo
-doesn't include.
+That's the whole surface. There's no `get_analytics`, `get_top_posts` or
+anything revenue-shaped here — those exist only on the hosted seenpaid.com
+MCP server, because answering them requires the closed-source attribution
+engine this repo doesn't include.
 
 See `mcp-connector/README.md` for a copy-pasteable client config.
 
@@ -118,7 +135,7 @@ src/
   jobs/              BullMQ queue + worker: the actual publish pipeline
   entry-points/
     api/             REST API (Express)
-    mcp/             The 13-tool MCP server
+    mcp/             The 16-tool MCP server
   auth/              Single-operator API-key auth (see below)
   data-access/       Drizzle ORM schema, repositories, migrations
 ```
